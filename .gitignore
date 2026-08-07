@@ -1,0 +1,23 @@
+# Build artifacts
+/repo
+/repo-cli
+/evo
+/eds
+/bin/
+/dist/
+
+# Local config — never commit credentials
+*.env
+.env
+.env.*
+.claude.json
+.claude/settings.local.json
+.claude/settings.local*.json
+
+# Editor / OS
+.idea/
+.vscode/
+.DS_Store
+
+/swagger/
+openapi*
