@@ -330,3 +330,14 @@ Makefile                        # build, build-all, release, upload, …
 | `EDS_CONFIG`      | Path to config file (overrides default)                      |
 | `XDG_CONFIG_HOME` | Respected when locating the config file                      |
 | `AWS_ENDPOINT_URL` | S3-compatible endpoint for `make upload` (optional mirror)  |
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the development setup and PR
+process, and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for community
+guidelines. Report security issues to opensource@cloud.ru rather than a
+public issue.
+
+## License
+
+Apache License 2.0 — see [LICENSE](LICENSE).
