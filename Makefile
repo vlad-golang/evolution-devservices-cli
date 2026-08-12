@@ -179,3 +179,6 @@ help:
 	@echo "  install         go install into \$$GOBIN"
 	@echo "  test, vet, tidy standard Go targets"
 	@echo "  clean           remove ./bin and ./dist"
+
+openapi-generator:
+	openapi-generator-cli generate -i openapi-public.yaml -g go -o ./internal/workflow_client -c .openapi-generator.yaml

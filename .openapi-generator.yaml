@@ -1,0 +1,14 @@
+packageName: workflowclient
+withGoMod: false
+structPrefix: true
+typeMappings:
+  integer: int
+
+generateInterfaces: false
+hideGenerationTimestamp: true
+
+globalProperties:
+  apiTests: false
+  modelTests: false
+  apiDocs: false
+  modelDocs: false
