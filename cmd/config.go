@@ -17,25 +17,13 @@ variables. Useful to debug "why is my CLI pointing at the wrong host?".`,
 			if err != nil {
 				return err
 			}
-			workflowTokenStatus := "not cached"
-			if ctx.Cfg.WorkflowAccessToken != "" {
-				if workflowTokenExpired(ctx.Cfg.WorkflowTokenExpiresAt) {
-					workflowTokenStatus = "expired"
-				} else {
-					workflowTokenStatus = "valid until " + ctx.Cfg.WorkflowTokenExpiresAt
-				}
-			}
 
 			ctx.Printer.KeyValue([][2]string{
 				{"project_id", ctx.Cfg.ProjectID},
-				{"iam_url", ctx.Cfg.IAMURL},
 				{"repo_api_url", ctx.Cfg.APIURL},
-				{"repo_api_key", maskKey(ctx.Cfg.APIKey)},
+				{"api_key", maskKey(ctx.Cfg.APIKey)},
 				{"repo_git_host", ctx.Cfg.GitHost},
 				{"wf_api_url", ctx.Cfg.WorkflowAPIURL},
-				{"wf_key_id", ctx.Cfg.WorkflowKeyID},
-				{"wf_secret", maskKey(ctx.Cfg.WorkflowSecret)},
-				{"wf_access_token", workflowTokenStatus},
 			})
 			return nil
 		},

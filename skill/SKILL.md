@@ -6,11 +6,12 @@ description: Manage cloud.ru developer tools products via the `eds` CLI — git 
 # Evolution DevServices CLI (eds) — Agent Skill
 
 The `eds` CLI is a thin, agent-friendly wrapper around two independent
-cloud.ru "developer tools" products, each with its own HTTP API and its
-own credentials:
+cloud.ru "developer tools" products:
 
 - **Repo** (`eds repo`) — git repositories.
 - **Workflow Studio** (`eds wf`) — deploy pipelines / publishing.
+
+Both products are authenticated with the same API key (`EDS_API_KEY`).
 
 It produces stable JSON output, accepts configuration through environment
 variables, and is safe to invoke from automation.
@@ -68,8 +69,7 @@ Errors go to stderr and the process exits non-zero.
 | `eds wf app status <id> [--json]`                                                                                                       | Convenience: run status + stage/job breakdown + live URL                                                                                                    |
 | `eds wf run show <id> [--json]` / `eds wf run list [--pipeline-id ID] [--json]` / `eds wf run stop <id>`                                | Inspect/control a pipeline run                                                                                                                              |
 | `eds wf job show <id> [--json]` / `eds wf job list --run-id ID [--json]` / `eds wf job logs <id>` / `eds wf job retry\|stop <id>`       | Inspect/control a job                                                                                                                                       |
-| `eds login --repo-api-key <KEY> --project <ID> [--repo-api-url URL]` / `eds login --wf-key-id <ID> --wf-secret <SECRET> --project <ID>` | Persist credentials (one-time setup; two independent credential pairs)                                                                                      |
-| `eds repo * --repo-use-wf-auth` (or `EDS_REPO_USE_WF_AUTH=1`)                                                                           | TEMPORARY: authenticate Repo calls with the Workflow Studio Bearer token instead of `X-API-KEY`, for environments where the Repo API key isn't accepted yet |
+| `eds login --api-key <KEY> --project <ID> [--repo-api-url URL]`                                                                         | Persist credentials (one-time setup)                                                                                                                      |
 
 The `<id-or-name>` argument on `eds repo *` and `--repository` on
 `eds wf app create` are resolved automatically: UUIDs are used as-is, names
@@ -79,51 +79,31 @@ and must be passed as-is.
 
 ## Configuration
 
-`eds repo *` and `eds wf *` use **independent credentials** — having one
-configured does not imply the other is. Flags/env vars are namespaced by
-product: `--repo-*`/`EDS_REPO_*` for Repo, `--wf-*`/`EDS_WF_*` for Workflow
-Studio; `--project`/`EDS_PROJECT_ID` and `--iam-url`/`EDS_IAM_URL` are
-shared platform-level settings.
-
-Workflow Studio authenticates differently from Repo: the agent provides a
-**key id + secret** pair (not a usable token directly). The CLI exchanges
-that pair for a short-lived Bearer access token via the cloud.ru IAM
-service (`POST https://iam.api.cloud.ru/api/v1/auth/token`) the first time
-it's needed, and caches the token (plus its expiry) in
-`~/.config/eds/config.json`, re-exchanging automatically once it expires.
-**The agent never calls the IAM endpoint itself** — just provide the key
-id/secret and the CLI handles the exchange transparently on every
-`eds wf` command.
+`eds repo *` and `eds wf *` share the same API key (`EDS_API_KEY`).
+Flags/env vars are namespaced by product for URLs: `--repo-*`/`EDS_REPO_*`
+for Repo, `--wf-*`/`EDS_WF_*` for Workflow Studio; `--api-key`/`EDS_API_KEY`
+and `--project`/`EDS_PROJECT_ID` are shared platform-level settings.
 
 Precedence (lowest → highest):
 
 1. Built-in defaults: `api_url=https://devtools.api.cloud.ru/repo/api/v1`,
    `git_host=https://repo.cloud.ru/`,
-   `workflow_api_url=https://pipeline.cloud.ru/public-api/v1`,
-   `iam_url=https://iam.api.cloud.ru/api/v1/auth/token`.
+   `workflow_api_url=https://pipeline.cloud.ru/public-api/v1`.
 2. File at `~/.config/eds/config.json` (override with `EDS_CONFIG`).
-3. Environment: `EDS_PROJECT_ID`, `EDS_IAM_URL`, `EDS_REPO_API_URL`,
-   `EDS_REPO_API_KEY`, `EDS_REPO_GIT_HOST`, `EDS_WF_API_URL`, `EDS_WF_KEY_ID`,
-   `EDS_WF_SECRET`.
-4. Flags: `--project`, `--iam-url`, `--repo-api-url`, `--repo-api-key`,
-   `--repo-git-host`, `--wf-api-url`, `--wf-key-id`, `--wf-secret`.
+3. Environment: `EDS_PROJECT_ID`, `EDS_REPO_API_URL`,
+   `EDS_API_KEY`, `EDS_REPO_GIT_HOST`, `EDS_WF_API_URL`.
+4. Flags: `--project`, `--repo-api-url`, `--api-key`,
+   `--repo-git-host`, `--wf-api-url`.
 
 Dev environment: `EDS_REPO_API_URL=https://devtools.dev.api.internal.cloud.ru/repo/api/v1`.
 
 ## Required environment for an agent
 
-Before invoking any `eds repo *` command, the agent must ensure:
+Before invoking any `eds repo *` or `eds wf *` command, the agent must
+ensure:
 
-- `EDS_REPO_API_KEY` is set (or the key was saved via `eds login --repo-api-key`).
+- `EDS_API_KEY` is set (or the key was saved via `eds login --api-key`).
 - `EDS_PROJECT_ID` is set.
-
-Before invoking any `eds wf app *` / `eds wf run *` / `eds wf job *`
-command, the agent must additionally ensure:
-
-- `EDS_WF_KEY_ID` and `EDS_WF_SECRET` are set (or saved via
-  `eds login --wf-key-id --wf-secret`) — this is **not** the same
-  credential as `EDS_REPO_API_KEY`. Do not attempt to set a raw Bearer
-  token directly; the CLI derives it from this pair automatically.
 
 The skill's runtime should arrange for these before the first call.
 
@@ -201,10 +181,9 @@ echo "my-old-repo" | eds repo delete my-old-repo --force --json
 
 ```bash
 eds config --json
-# { "project_id": "...", "iam_url": "...",
-#   "repo_api_url": "...", "repo_api_key": "abcd…wxyz", "repo_git_host": "...",
-#   "wf_api_url": "...", "wf_key_id": "...", "wf_secret": "abcd…wxyz",
-#   "wf_access_token": "valid until 2026-07-28T12:00:00Z" }
+# { "project_id": "...",
+#   "repo_api_url": "...", "api_key": "abcd…wxyz", "repo_git_host": "...",
+#   "wf_api_url": "..." }
 ```
 
 ### Publish a repository as a live service (main Workflow Studio scenario)
@@ -213,8 +192,8 @@ This is the end-to-end path from "code was pushed to a repository" to
 "it's live at a URL" — the primary reason to use `eds wf app *`:
 
 ```bash
-export EDS_WF_KEY_ID=...   # separate credential pair from EDS_REPO_API_KEY
-export EDS_WF_SECRET=...   # the CLI exchanges this for a Bearer token automatically
+export EDS_API_KEY=...
+export EDS_PROJECT_ID=...
 
 # 1. The repository already exists (created + pushed via `eds repo`), and its
 #    Dockerfile is Container Apps-compatible -- see "Dockerfile requirements"
@@ -290,7 +269,7 @@ Sample failure:
 
 ```
 $ eds repo list
-Error: repo API key is not set. Run `eds login --repo-api-key <KEY>` or set EDS_REPO_API_KEY
+Error: API key is not set. Run `eds login --api-key <KEY>` or set EDS_API_KEY
 exit=1
 ```
 
@@ -314,18 +293,12 @@ exit=1
   between `error`/`deleted` across repeated calls). Treat it as best-effort:
   call it, then check `eds wf app list`/`show` to see the actual outcome
   rather than trusting the delete call's own exit code.
-- Some environments don't accept `X-API-KEY` for `eds repo *` yet; if you
-  see `Jwt issuer is not configured` from a Repo call, retry with
-  `--repo-use-wf-auth` (requires `EDS_WF_KEY_ID`/`EDS_WF_SECRET` to already
-  be set) before concluding the repo API key itself is wrong.
 
 ## Quick reference
 
 ```text
 # 1. bootstrap
-export EDS_REPO_API_KEY=...
-export EDS_WF_KEY_ID=...     # only needed for wf app/run/job commands
-export EDS_WF_SECRET=...     # exchanged for a Bearer token automatically
+export EDS_API_KEY=...
 export EDS_PROJECT_ID=...
 # (optional) install via curl | bash — see "Installation"
 
@@ -333,13 +306,9 @@ export EDS_PROJECT_ID=...
 eds repo list --json | jq '.repositories[].name'
 
 # 3. write
-eds repo create demo --description "agent created" --json | jq -r '.id'
+NEW_REPO=$(eds repo create my-app --json | jq -r '.id')
 
-# 4. act
-eds repo clone demo ./work/demo
-
-# 5. publish (Workflow Studio)
-APP_ID=$(eds wf app create demo --repository demo --branch main --json | jq -r '.id')
-eds wf app deploy "$APP_ID" --json | jq -r '.run_id'
-eds wf app status "$APP_ID" --json | jq '.latest_deployment.url'
+# 4. deploy
+APP_ID=$(eds wf app create my-app --repository "$NEW_REPO" --branch main --json | jq -r '.id')
+eds wf app status "$APP_ID" --json | jq '{status: .application.status, url: .latest_deployment.url}'
 ```

@@ -12,17 +12,9 @@ that currently drives two independent products:
 - **Workflow Studio** (wires a repository + branch to a deploy pipeline and
   publishes it) — `eds wf app|run|job *`.
 
-These are separate products with **independent credentials**, namespaced
-accordingly. Repo takes a static `--repo-api-key`/`EDS_REPO_API_KEY` sent
-as `X-API-KEY`. Workflow Studio takes a `--wf-key-id`/`--wf-secret` pair
-(`EDS_WF_KEY_ID`/`EDS_WF_SECRET`) that the CLI exchanges for a short-lived
-Bearer access token via the cloud.ru IAM service (`internal/iam`) the
-first time it's needed, caching the token + its expiry in the config file
-and re-exchanging automatically once it expires — callers never handle a
-raw Workflow Studio token themselves. `--project`/`EDS_PROJECT_ID` and
-`--iam-url`/`EDS_IAM_URL` are the only platform-level (unprefixed)
-settings, shared across products. Having one product's credential
-configured does not imply the other is.
+Both products are authenticated with the same API key (`--api-key`/`EDS_API_KEY`),
+sent as `X-API-KEY`. `--project`/`EDS_PROJECT_ID` is the only other platform-level
+(shared, unprefixed) setting.
 
 The CLI is explicitly designed to be **agent-friendly**: every command has
 stable `--json` output, config comes from env vars, and `skill/SKILL.md`
@@ -69,42 +61,25 @@ genuinely internal and not tied to where the repo lives.
 
 Cobra-based CLI, one command per file under `cmd/`, thin API clients under
 `internal/repoapi/` (Repo product) and `internal/workflowapi/` (Workflow
-Studio), plus a small `internal/iam/` client used only to mint Workflow
-Studio's Bearer token.
+Studio).
 
 - `main.go` — entry point, wires `main.version` (ldflags) into `cmd.SetVersion`.
 - `cmd/root.go` — builds the root `eds` command, registers global persistent
-  flags. Product-scoped: `--repo-api-url`, `--repo-api-key`, `--repo-git-host`
-  (Repo product); `--wf-api-url`, `--wf-key-id`, `--wf-secret` (Workflow
-  Studio). Platform-level (shared, unprefixed): `--project`, `--iam-url`.
-  Plus `--json`, `--quiet`, and the TEMPORARY `--repo-use-wf-auth` (see below).
+  flags. Product-scoped: `--repo-api-url`, `--repo-git-host`
+  (Repo product); `--wf-api-url` (Workflow Studio). Platform-level (shared,
+  unprefixed): `--project`, `--api-key`. Plus `--json`, `--quiet`.
 - `cmd/helpers.go` — `resolveContext(cmd)` is the entry point every subcommand
   calls first. It loads config, layers flag overrides on top (flags > env >
   file > defaults), and builds a `runtimeContext{Cfg, API, WorkflowAPI,
   Printer, Quiet}`. `requireAPIKey()` guards Repo-product commands.
-  `ensureWorkflowAuth(ctx)` guards Workflow Studio commands: it reuses the
-  cached access token in `Cfg` if still valid *and* was minted for the
-  currently-active `WorkflowKeyID` (see `WorkflowAccessTokenKeyID` below),
-  otherwise calls `internal/iam.FetchToken` to exchange `WorkflowKeyID`/
-  `WorkflowSecret` for a fresh one, pushes it into `WorkflowAPI` via
-  `SetToken`, and persists the new token + expiry + key id back to the
-  config file (reloaded fresh from disk first, so it doesn't also persist
-  unrelated one-off flag overrides for this run). `resolveContext` also
-  implements the temporary `--repo-use-wf-auth`/`EDS_REPO_USE_WF_AUTH`
-  escape hatch: when set, it calls `ensureWorkflowAuth` unconditionally and
-  hands the resulting Bearer token to `ctx.API.SetBearerToken`, so Repo
-  commands authenticate the same way Workflow Studio does. This exists
-  because some cloud.ru environments don't (yet) accept `X-API-KEY` for the
-  Repo product; remove `--repo-use-wf-auth`, `SetBearerToken`, and
-  `UsesBearerAuth` once that's fixed server-side everywhere.
+  `ensureWorkflowAuth(ctx)` guards Workflow Studio commands: it validates
+  that `APIKey` is set (the same key is used for both products). Both helpers
+  return the same friendly error when the key is missing.
 - `cmd/login.go`, `cmd/config.go`, `cmd/version.go`, `cmd/repo.go` — one
   subcommand tree each. `repo.go` holds `eds repo list|create|show|delete|clone`
   plus `resolveRepoID`, which lets users pass either a UUID or a repo name
   (falls back to listing + case-insensitive name match when the arg doesn't
-  look like a UUID). `login.go` accepts the Repo-product and Workflow Studio
-  credential pairs independently (either or both); setting a new
-  `--wf-key-id`/`--wf-secret` clears any cached access token so it isn't
-  reused across a credential change.
+  look like a UUID). `login.go` accepts `--api-key` plus optional product URLs.
 - `cmd/wf.go` — the `eds wf` parent command; just groups `newAppCmd()`,
   `newRunCmd()`, `newJobCmd()` as children. Doesn't hold any logic itself.
 - `cmd/app.go`, `cmd/run.go`, `cmd/job.go` — Workflow Studio subcommand
@@ -134,20 +109,8 @@ Studio's Bearer token.
   `$XDG_CONFIG_HOME/eds/config.json`) -> `EDS_*` env vars -> CLI flags
   (flags applied later, in `cmd/helpers.go`). Config file is written with
   `0600` permissions and is a single platform-level file shared by both
-  products (not split per-product), since project id/IAM are shared. Also
-  holds the Workflow Studio credential pair (`WorkflowKeyID`/`WorkflowSecret`)
-  and the CLI-managed token cache (`WorkflowAccessToken`/
-  `WorkflowTokenExpiresAt`/`WorkflowAccessTokenKeyID`) — these three have no
-  flag/env equivalent since they're never meant to be set directly.
-  `WorkflowAccessTokenKeyID` records which `WorkflowKeyID` the cached token
-  was minted for; `ensureWorkflowAuth` compares it against the currently
-  active `WorkflowKeyID` before trusting the cache. Without this check,
-  switching Workflow Studio credentials via flag/env (rather than through
-  `login`, which explicitly clears the cache) would silently keep reusing a
-  token minted for the *old* credentials until it expired -- this bit us
-  switching from a dev to a prod `wf-key-id` while the disk cache still held
-  a live dev-minted token. Note: the internal `Config`
-  struct field names and JSON keys (`api_url`, `workflow_key_id`, etc.) keep
+  products (not split per-product), since project id is shared. Note: the
+  internal `Config` struct field names and JSON keys (`api_url`, etc.) keep
   their pre-rename spelling — only the user-facing CLI flags/env vars/command
   names follow the `eds`/`repo`/`wf` product split; this is a deliberate
   minimal-diff choice, not an oversight.
@@ -157,14 +120,13 @@ Studio's Bearer token.
   output modes stay in sync from one call site. Also has `HumanTime` /
   `HumanSize` formatters.
 - `internal/repoapi/client.go` — generic authenticated HTTP client (`Do`),
-  sends `X-API-KEY` by default, decodes JSON, maps non-2xx responses to
+  sends `X-API-KEY`, decodes JSON, maps non-2xx responses to
   `*APIError` (tries `error`, `message`, and per-field `errors` response
   shapes; also captures a server-assigned request id from common headers
   like `X-Request-Id` via `requestIDFromHeader` and includes it in
   `APIError.Error()` when present -- the single most useful thing to grab
   when reporting a bug to the API team, since bodies are sometimes empty
-  even on a 500). Also has `SetBearerToken`/`UsesBearerAuth` -- TEMPORARY,
-  backs `--repo-use-wf-auth` (see `cmd/helpers.go` above); remove together.
+  even on a 500).
 - `internal/repoapi/repositories.go` — repository-specific request/response
   types and the four API calls (`ListRepositories`, `GetRepository`,
   `CreateRepository`, `DeleteRepository`), all scoped under
@@ -172,21 +134,14 @@ Studio's Bearer token.
   `search` query param entirely when empty — the API treats an empty string
   as a literal (matches nothing) rather than a wildcard.
 - `internal/workflowapi/client.go` — the Workflow Studio counterpart to
-  `repoapi/client.go`: same `Do`/`APIError`/request-id shape, but sends
-  `Authorization: Bearer <token>` instead of `X-API-KEY`, has no built-in
-  request timeout (bounded by the caller's context instead, since `logs`
-  can stay open for a running job), and adds `Stream` for reading an SSE
-  response body line-by-line plus `SetToken` to swap the token after an
-  IAM refresh.
+  `repoapi/client.go`: same `Do`/`APIError`/request-id shape, sends
+  `X-API-KEY` (the same key as Repo), has no built-in request timeout
+  (bounded by the caller's context instead, since `logs` can stay open for
+  a running job), and adds `Stream` for reading an SSE response body
+  line-by-line.
 - `internal/workflowapi/application.go`, `run.go`, `job.go` —
   application/deployment, run/stage, and job request/response types plus
   the API calls, all scoped under `/project/{projectID}/...`.
-- `internal/iam/client.go` — `FetchToken(ctx, iamURL, keyID, secret)`
-  exchanges Workflow Studio's key id/secret for a Bearer `access_token`
-  (Keycloak-shaped response: `access_token`, `expires_in`, etc.) against
-  `https://iam.api.cloud.ru/api/v1/auth/token`. This is the **only**
-  consumer of the IAM endpoint — everything else in the CLI talks to
-  `repoapi`/`workflowapi`, never IAM directly.
 - `openapi-user.yaml` — OpenAPI (Swagger 2.0) spec for the Workflow Studio
   user API; the source of truth for request/response shapes when extending
   `internal/workflowapi`.
@@ -208,23 +163,10 @@ Studio's Bearer token.
 
 ## Conventions specific to this codebase
 
-- Every new Repo-product subcommand should start with
-  `ctx, err := resolveContext(cmd)` and, if it hits the API,
-  `ctx.requireAPIKey()`. Every new Workflow Studio subcommand
-  (under `eds wf`: `app`/`run`/`job`) should call
-  `ctx.ensureWorkflowAuth(cmd.Context())` instead — it both validates
-  credentials and refreshes the cached token.
-- Never add a way to set `WorkflowAccessToken`/`WorkflowTokenExpiresAt`/
-  `WorkflowAccessTokenKeyID` directly (no flag, no env var); they are
-  populated only by `ensureWorkflowAuth`. If Workflow Studio's auth model
-  changes, change `internal/iam` and `ensureWorkflowAuth`, not the cache
-  fields themselves.
-- `--repo-use-wf-auth`/`EDS_REPO_USE_WF_AUTH` is a deliberately TEMPORARY
-  escape hatch (Repo product auth via the Workflow Studio Bearer token
-  instead of `X-API-KEY`) for environments where Repo's own API key auth
-  isn't accepted yet. If you add another workaround flag of this shape,
-  label it TEMPORARY in the flag help text and in code comments the same
-  way, so it's easy to grep for and remove later.
+- Every new subcommand should start with `ctx, err := resolveContext(cmd)`.
+  If it hits a Repo-product API, call `ctx.requireAPIKey()`. If it hits a
+  Workflow Studio API, call `ctx.ensureWorkflowAuth(cmd.Context())` — both
+  validate that `EDS_API_KEY` is set.
 - Every subcommand that returns structured data should support both table
   (default on TTY) and `--json` output via `ctx.Printer`, not ad-hoc
   `fmt.Println`.
@@ -232,11 +174,11 @@ Studio's Bearer token.
   repository UUID or a name (`resolveRepoID` / `looksLikeUUID`); don't
   require callers to look up IDs first.
 - New flags/env vars must follow the existing product-scoping convention:
-  Repo-product settings get a `repo-`/`REPO_` infix (`--repo-api-key`,
-  `EDS_REPO_API_KEY`), Workflow Studio settings get a `wf-`/`WF_` infix
-  (`--wf-key-id`, `EDS_WF_KEY_ID`), and only genuinely cross-product
-  settings (project id, IAM) stay unprefixed. Don't add a third product's
-  settings without picking an analogous short infix.
+  Repo-product settings get a `repo-`/`REPO_` infix (`--repo-api-url`,
+  `EDS_REPO_API_URL`), Workflow Studio settings get a `wf-`/`WF_` infix
+  (`--wf-api-url`, `EDS_WF_API_URL`), and only genuinely cross-product
+  settings (project id and the API key) stay unprefixed. Don't add a third
+  product's settings without picking an analogous short infix.
 - Errors returned from `RunE` are printed as a single `Error: <msg>` line to
   stderr by `cmd.Execute()` (root sets `SilenceUsage`/`SilenceErrors`) — keep
   error messages one line and actionable (see `requireAPIKey`'s message as

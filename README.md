@@ -7,19 +7,17 @@ developer tools products. It currently covers two products:
 - **Workflow Studio** (`eds wf`) — wires a repository + branch to a deploy
   pipeline and publishes it.
 
-Repo and Workflow Studio are independent products with independent
-credentials; `eds` is just the platform CLI they're both driven through.
-Every command is designed to be safely driven by automation and AI
-agents: stable `--json` output, environment variables for secrets.
+Repo and Workflow Studio are independent products, but both are authenticated
+with the same API key (`EDS_API_KEY`) via `X-API-KEY`. `eds` is just the
+platform CLI they're both driven through. Every command is designed to be safely
+driven by automation and AI agents: stable `--json` output, environment variables
+for secrets.
 
 - Single static binary (Go, no runtime dependencies).
-- Reads Repo's API key from `EDS_REPO_API_KEY`, Workflow Studio's key
-  id/secret from `EDS_WF_KEY_ID`/`EDS_WF_SECRET`, or from
-  `~/.config/eds/config.json`.
+- Reads the API key from `EDS_API_KEY` or from `~/.config/eds/config.json`.
 - Outputs JSON when piped, pretty tables on a TTY (`--json` to force).
-- Repo is authenticated with `X-API-KEY` and uses the local `git` CLI for
-  clone. Workflow Studio is authenticated with a Bearer token that `eds`
-  mints on your behalf (see "Workflow Studio auth" below).
+- Repo uses the local `git` CLI for clone. Both products authenticate with
+  `X-API-KEY`.
 
 ## Installation
 
@@ -65,17 +63,16 @@ The CLI looks for configuration in this order (later wins):
 
 1. Built-in defaults: Repo API URL `https://devtools.api.cloud.ru/repo/api/v1`,
    git host `https://repo.cloud.ru/`, Workflow Studio API URL
-   `https://pipeline.cloud.ru/public-api/v1`, IAM URL
-   `https://iam.api.cloud.ru/api/v1/auth/token`.
+   `https://pipeline.cloud.ru/public-api/v1`.
 2. File `~/.config/eds/config.json` (overridable via `EDS_CONFIG` or
    `XDG_CONFIG_HOME`) — a single platform-level file shared by both products.
 3. Environment variables (see table below).
 4. Per-command flags.
 
-Env vars and flags are namespaced by product — `EDS_REPO_*`/`--repo-*` for
-Repo, `EDS_WF_*`/`--wf-*` for Workflow Studio — except for the truly
-platform-level settings (`EDS_PROJECT_ID`/`--project`, `EDS_IAM_URL`/`--iam-url`),
-which are shared.
+Env vars and flags are namespaced by product for URLs — `EDS_REPO_*`/`--repo-*`
+for Repo, `EDS_WF_*`/`--wf-*` for Workflow Studio — except for `--api-key`/
+`EDS_API_KEY` and `--project`/`EDS_PROJECT_ID`, which are shared platform-level
+settings.
 
 Example config file (`~/.config/eds/config.json`):
 
@@ -85,12 +82,7 @@ Example config file (`~/.config/eds/config.json`):
   "project_id": "3232b2d0-1063-41e6-b2fa-13df767f4a0a",
   "api_key": "...",
   "git_host": "https://repo.cloud.ru/",
-  "workflow_api_url": "https://pipeline.cloud.ru/public-api/v1",
-  "workflow_key_id": "...",
-  "workflow_secret": "...",
-  "iam_url": "https://iam.api.cloud.ru/api/v1/auth/token",
-  "workflow_access_token": "... (cached, managed by the CLI)",
-  "workflow_token_expires_at": "... (cached, managed by the CLI)"
+  "workflow_api_url": "https://pipeline.cloud.ru/public-api/v1"
 }
 ```
 
@@ -104,16 +96,9 @@ Override with `--repo-api-url` or `EDS_REPO_API_URL`.
 
 ### Workflow Studio auth
 
-Workflow Studio has its own base URL (`--wf-api-url` / `EDS_WF_API_URL`) and
-its own credential pair (`--wf-key-id`/`--wf-secret` or
-`EDS_WF_KEY_ID`/`EDS_WF_SECRET`) — it is **not** authenticated with
-`--repo-api-key`/`EDS_REPO_API_KEY`. The key id/secret are exchanged for a
-short-lived Bearer access token via the cloud.ru IAM service
-(`POST /api/v1/auth/token` at `--iam-url` / `EDS_IAM_URL`, default
-`https://iam.api.cloud.ru/api/v1/auth/token`). The CLI does this
-automatically before the first `eds wf ...` call and caches the resulting
-token (and its expiry) in the config file, re-exchanging it once it
-expires — you never need to call the IAM endpoint yourself.
+Workflow Studio uses the same API key as Repo (`--api-key` / `EDS_API_KEY`),
+sent as `X-API-KEY` on every request. There is no separate credential pair or
+token exchange — the same key works for both `eds repo *` and `eds wf *`.
 
 ## Commands
 
@@ -134,8 +119,8 @@ eds wf app show <id>                                  show application details
 eds wf app update <id> --branch B [--name N]          update name/branch
 eds wf app delete <id> [--force]                       delete an application
 eds wf app deploy <id>                                run the pipeline and publish
-eds wf app deployments <id>                            list publish history
-eds wf app status <id>                                 run/stage/job status + live URL
+eds wf app deployments <id>                           list publish history
+eds wf app status <id>                                run status + live URL
 
 eds wf run show <id>                          show a run's status, stages and jobs
 eds wf run list [--pipeline-id ID]             list runs
@@ -151,14 +136,9 @@ eds wf job stop <id>                          stop a running job
 ### Login
 
 ```bash
-eds login --repo-api-key "$EDS_REPO_API_KEY" --project <project-id>
+eds login --api-key "$EDS_API_KEY" --project <project-id>
 eds login --repo-api-url https://devtools.dev.api.internal.cloud.ru/repo/api/v1 \
-          --repo-api-key "$EDS_REPO_API_KEY" --project <project-id>
-
-# Workflow Studio uses a separate credential pair, exchanged for a Bearer
-# token via cloud.ru IAM on first use (cached automatically afterwards)
-eds login --wf-key-id "$WF_KEY_ID" --wf-secret "$WF_SECRET" \
-          --project <project-id>
+          --api-key "$EDS_API_KEY" --project <project-id>
 ```
 
 ### For an AI agent
@@ -166,7 +146,7 @@ eds login --wf-key-id "$WF_KEY_ID" --wf-secret "$WF_SECRET" \
 The CLI is designed to be safely scripted. Recommended pattern:
 
 ```bash
-export EDS_REPO_API_KEY="..."
+export EDS_API_KEY="..."
 export EDS_PROJECT_ID="..."
 
 # List repos as JSON, pipe into jq
@@ -201,8 +181,7 @@ produces a live URL. This is the CLI's main "vibe-coded a site, now ship it"
 path — `eds repo` gets your code hosted, `eds wf app` publishes it.
 
 ```bash
-export EDS_WF_KEY_ID="..."     # separate credential pair from EDS_REPO_API_KEY
-export EDS_WF_SECRET="..."     # exchanged for a Bearer token via cloud.ru IAM automatically
+export EDS_API_KEY="..."
 export EDS_PROJECT_ID="..."
 
 # 1. Create the repo and push code (see "File upload / push" below)
@@ -307,7 +286,6 @@ internal/
   output/                       # JSON / table formatting
   repoapi/                      # thin HTTP client for the Repo product API
   workflowapi/                  # thin HTTP client for the Workflow Studio product API
-  iam/                          # exchanges wf-key-id/secret for a Bearer token
 scripts/
   install.sh                    # one-liner installer (GitHub Releases by default)
 skill/
@@ -320,13 +298,10 @@ Makefile                        # build, build-all, release, upload, …
 | Variable          | Description                                                 |
 | ----------------- | ------------------------------------------------------------ |
 | `EDS_PROJECT_ID`  | Default project ID (shared across products)                  |
-| `EDS_IAM_URL`     | cloud.ru IAM token endpoint (shared, overrides config)        |
 | `EDS_REPO_API_URL`  | Repo product API base URL (overrides config)                |
-| `EDS_REPO_API_KEY`  | Repo product X-API-KEY value                                 |
+| `EDS_API_KEY`       | API key used for both products (X-API-KEY)                   |
 | `EDS_REPO_GIT_HOST` | Repo product git smart-HTTP host                             |
 | `EDS_WF_API_URL`  | Workflow Studio product API base URL (overrides config)      |
-| `EDS_WF_KEY_ID`   | Workflow Studio key id (separate from Repo's API key)         |
-| `EDS_WF_SECRET`   | Workflow Studio secret (paired with key id)                   |
 | `EDS_CONFIG`      | Path to config file (overrides default)                      |
 | `XDG_CONFIG_HOME` | Respected when locating the config file                      |
 | `AWS_ENDPOINT_URL` | S3-compatible endpoint for `make upload` (optional mirror)  |

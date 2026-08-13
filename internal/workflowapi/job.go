@@ -3,7 +3,6 @@ package workflowapi
 import (
 	"context"
 	"fmt"
-	"io"
 	"net/url"
 	"strconv"
 )
@@ -92,14 +91,4 @@ func (c *Client) StopJob(ctx context.Context, id string) error {
 		return fmt.Errorf("project id is not configured; use --project or EDS_PROJECT_ID")
 	}
 	return c.Do(ctx, "POST", fmt.Sprintf("/project/%s/job/%s/stop", c.projectID, id), nil, nil, nil)
-}
-
-// StreamJobLogs opens the job's log stream (server-sent events). The caller
-// must close the returned reader. Use bufio.Scanner to read it line by line;
-// "data: ..." lines carry log content, ": ..." lines are heartbeats.
-func (c *Client) StreamJobLogs(ctx context.Context, id string) (io.ReadCloser, error) {
-	if c.projectID == "" {
-		return nil, fmt.Errorf("project id is not configured; use --project or EDS_PROJECT_ID")
-	}
-	return c.Stream(ctx, fmt.Sprintf("/project/%s/job/%s/logs", c.projectID, id), nil)
 }

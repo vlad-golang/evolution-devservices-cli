@@ -1,7 +1,6 @@
 // Package workflowapi provides a thin client for the Workflow Studio user API
-// (cloud.ru "developer tools" -> Workflow Studio). Unlike internal/repoapi,
-// authentication is a Bearer token (Authorization header), not X-API-KEY --
-// Workflow Studio uses a separate credential from the Repo API key.
+// (cloud.ru "developer tools" -> Workflow Studio). Both products use the same
+// API key sent as X-API-KEY.
 package workflowapi
 
 import (
@@ -15,7 +14,7 @@ import (
 	"strings"
 )
 
-// Client talks to the Workflow Studio API and authenticates with a Bearer token.
+// Client talks to the Workflow Studio API and authenticates with X-API-KEY.
 type Client struct {
 	baseURL   string
 	token     string
@@ -38,8 +37,7 @@ func New(baseURL, token, projectID string) *Client {
 // ProjectID returns the configured project ID.
 func (c *Client) ProjectID() string { return c.projectID }
 
-// SetToken updates the Bearer access token used for subsequent requests.
-// Used after exchanging a key id/secret for a fresh token (see internal/iam).
+// SetToken updates the API key used for subsequent requests.
 func (c *Client) SetToken(token string) { c.token = token }
 
 // APIError is a non-2xx response from the API.
@@ -88,7 +86,7 @@ func (c *Client) Do(ctx context.Context, method, path string, query url.Values, 
 	if err != nil {
 		return fmt.Errorf("build request: %w", err)
 	}
-	req.Header.Set("Authorization", "Bearer "+c.token)
+	req.Header.Set("X-API-KEY", c.token)
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
@@ -132,35 +130,6 @@ func requestIDFromHeader(h http.Header) string {
 		}
 	}
 	return ""
-}
-
-// Stream performs an authenticated GET and returns the raw response body
-// unread, for line-by-line consumption (e.g. the SSE job logs endpoint).
-// The caller must close the returned body.
-func (c *Client) Stream(ctx context.Context, path string, query url.Values) (io.ReadCloser, error) {
-	u, err := c.buildURL(path, query)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
-	if err != nil {
-		return nil, fmt.Errorf("build request: %w", err)
-	}
-	req.Header.Set("Authorization", "Bearer "+c.token)
-	req.Header.Set("Accept", "text/event-stream")
-
-	resp, err := c.http.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("http GET %s: %w", u, err)
-	}
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		defer resp.Body.Close()
-		respBody, _ := io.ReadAll(resp.Body)
-		return nil, parseError(resp.StatusCode, respBody, requestIDFromHeader(resp.Header))
-	}
-	return resp.Body, nil
 }
 
 func (c *Client) buildURL(path string, query url.Values) (string, error) {
