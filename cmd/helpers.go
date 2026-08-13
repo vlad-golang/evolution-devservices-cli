@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	workflowclient "github.com/cloud-ru/evolution-devservices-cli/internal/workflow_client"
 	"github.com/spf13/cobra"
 
 	"github.com/cloud-ru/evolution-devservices-cli/internal/config"
@@ -23,11 +24,13 @@ const workflowTokenExpiryBuffer = 30 * time.Second
 // runtimeContext holds the resolved configuration, API clients and printer
 // for a single command invocation.
 type runtimeContext struct {
-	Cfg         *config.Config
-	API         *repoapi.Client
-	WorkflowAPI *workflowapi.Client
-	Printer     *output.Printer
-	Quiet       bool
+	Cfg            *config.Config
+	API            *repoapi.Client
+	WorkflowAPI    *workflowapi.Client
+	Printer        *output.Printer
+	Quiet          bool
+	ProjectID      string
+	WorkflowClient *workflowclient.APIClient
 }
 
 // resolveContext loads config, applies flag/env overrides and constructs
@@ -72,12 +75,17 @@ func resolveContext(cmd *cobra.Command) (*runtimeContext, error) {
 		format = output.FormatJSON
 	}
 
+	workflowClientCfg := workflowclient.NewConfiguration()
+	workflowClientCfg.AddDefaultHeader("Authorization", "Bearer "+cfg.WorkflowAccessToken)
+
 	rt := &runtimeContext{
-		Cfg:         cfg,
-		API:         repoapi.New(cfg.APIURL, cfg.APIKey, cfg.ProjectID),
-		WorkflowAPI: workflowapi.New(cfg.WorkflowAPIURL, cfg.WorkflowAccessToken, cfg.ProjectID),
-		Printer:     output.New(format),
-		Quiet:       quiet,
+		Cfg:            cfg,
+		API:            repoapi.New(cfg.APIURL, cfg.APIKey, cfg.ProjectID),
+		WorkflowAPI:    workflowapi.New(cfg.WorkflowAPIURL, cfg.WorkflowAccessToken, cfg.ProjectID),
+		Printer:        output.New(format),
+		Quiet:          quiet,
+		ProjectID:      cfg.ProjectID,
+		WorkflowClient: workflowclient.NewAPIClient(workflowClientCfg),
 	}
 
 	// TEMPORARY: some prod environments don't yet accept X-API-KEY for the
@@ -144,6 +152,7 @@ func (r *runtimeContext) ensureWorkflowAuth(ctx context.Context) error {
 	r.Cfg.WorkflowTokenExpiresAt = expiresAt
 	r.Cfg.WorkflowAccessTokenKeyID = r.Cfg.WorkflowKeyID
 	r.WorkflowAPI.SetToken(tok.AccessToken)
+	r.WorkflowClient.GetConfig().DefaultHeader["Authorization"] = "Bearer " + tok.AccessToken
 
 	// Cache the token on disk (best-effort: a caching failure shouldn't
 	// fail the command, since we already have a valid token in memory).

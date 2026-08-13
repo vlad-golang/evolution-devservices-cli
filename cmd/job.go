@@ -1,10 +1,10 @@
 package cmd
 
 import (
-	"bufio"
 	"fmt"
-	"strings"
+	"time"
 
+	workflowclient "github.com/cloud-ru/evolution-devservices-cli/internal/workflow_client"
 	"github.com/spf13/cobra"
 
 	"github.com/cloud-ru/evolution-devservices-cli/internal/output"
@@ -115,14 +115,15 @@ func newJobListCmd() *cobra.Command {
 }
 
 func newJobLogsCmd() *cobra.Command {
+	var (
+		limit      int
+		beforeTime string
+	)
+
 	cmd := &cobra.Command{
 		Use:   "logs <job-id>",
-		Short: "Stream logs for a job",
+		Short: "Get logs for a job",
 		Args:  cobra.ExactArgs(1),
-		Long: `logs opens the job's log stream (server-sent events) and prints
-each log line to stdout as it arrives. For a finished job the stream ends
-as soon as the buffered log has been sent; for a running job it stays open
-until the job finishes or the command is interrupted (Ctrl-C).`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx, err := resolveContext(cmd)
 			if err != nil {
@@ -132,25 +133,28 @@ until the job finishes or the command is interrupted (Ctrl-C).`,
 				return err
 			}
 
-			body, err := ctx.WorkflowAPI.StreamJobLogs(cmd.Context(), args[0])
+			resp, _, err := ctx.WorkflowClient.WorkflowsAPI.
+				ProjectProjectIdJobJobIdLogListPost(cmd.Context(), ctx.ProjectID, args[0]).
+				Request(workflowclient.GitSbercloudTechDsworksServicesPipelineSrcInternalApplicationRequestJobLogList{
+					BeforeTime: &beforeTime,
+					Limit:      &limit,
+				}).Execute()
 			if err != nil {
-				return err
+				return fmt.Errorf("workflow client logs: %w", err)
 			}
-			defer body.Close()
 
-			scanner := bufio.NewScanner(body)
-			scanner.Buffer(make([]byte, 64*1024), 1024*1024)
-			for scanner.Scan() {
-				line := scanner.Text()
-				if !strings.HasPrefix(line, "data:") {
-					// Skip SSE "event:" lines, ":" heartbeat comments and blank separators.
-					continue
-				}
-				fmt.Fprintln(cmd.OutOrStdout(), strings.TrimSpace(strings.TrimPrefix(line, "data:")))
+			err = ctx.Printer.PrintJSON(resp)
+			if err != nil {
+				return fmt.Errorf("print json: %w", err)
 			}
-			return scanner.Err()
+
+			return nil
 		},
 	}
+
+	cmd.Flags().IntVar(&limit, "limit", 10, "page size, default is 10")
+	cmd.Flags().StringVar(&beforeTime, "before", time.Now().Format(time.RFC3339), "RFC3339 time, default is now")
+
 	return cmd
 }
 
