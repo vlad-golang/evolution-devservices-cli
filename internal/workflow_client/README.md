@@ -71,7 +71,7 @@ All URIs are relative to *https://pipeline.cloud.ru/public-api/v1*
 
 Class | Method | HTTP request | Description
 ------------ | ------------- | ------------- | -------------
-*PipelinesAPI* | [**ProjectProjectIdJobJobIdLogListPost**](docs/PipelinesAPI.md#projectprojectidjobjobidloglistpost) | **Post** /project/{project_id}/job/{job_id}/log/list | Get job log entries
+*PipelinesAPI* | [**ProjectProjectIdJobJobIdLogListGet**](docs/PipelinesAPI.md#projectprojectidjobjobidloglistget) | **Get** /project/{project_id}/job/{job_id}/log/list | Get job logs
 *PipelinesAPI* | [**ProjectProjectIdPipelinePipelineIdRunPost**](docs/PipelinesAPI.md#projectprojectidpipelinepipelineidrunpost) | **Post** /project/{project_id}/pipeline/{pipeline_id}/run | Run pipeline
 *PipelinesAPI* | [**ProjectProjectIdRunRunIdGet**](docs/PipelinesAPI.md#projectprojectidrunrunidget) | **Get** /project/{project_id}/run/{run_id} | Get run
 *PipelinesAPI* | [**ProjectProjectIdRunRunIdStopPost**](docs/PipelinesAPI.md#projectprojectidrunrunidstoppost) | **Post** /project/{project_id}/run/{run_id}/stop | Stop run
@@ -82,7 +82,7 @@ Class | Method | HTTP request | Description
 *ServicesAPI* | [**ProjectProjectIdApplicationApplicationIdPatch**](docs/ServicesAPI.md#projectprojectidapplicationapplicationidpatch) | **Patch** /project/{project_id}/application/{application_id} | Update application
 *ServicesAPI* | [**ProjectProjectIdApplicationListGet**](docs/ServicesAPI.md#projectprojectidapplicationlistget) | **Get** /project/{project_id}/application/list | List applications
 *ServicesAPI* | [**ProjectProjectIdApplicationPost**](docs/ServicesAPI.md#projectprojectidapplicationpost) | **Post** /project/{project_id}/application | Create application
-*WorkflowsAPI* | [**ProjectProjectIdJobJobIdLogListPost**](docs/WorkflowsAPI.md#projectprojectidjobjobidloglistpost) | **Post** /project/{project_id}/job/{job_id}/log/list | Get job log entries
+*WorkflowsAPI* | [**ProjectProjectIdJobJobIdLogListGet**](docs/WorkflowsAPI.md#projectprojectidjobjobidloglistget) | **Get** /project/{project_id}/job/{job_id}/log/list | Get job logs
 *WorkflowsAPI* | [**ProjectProjectIdPipelinePipelineIdRunPost**](docs/WorkflowsAPI.md#projectprojectidpipelinepipelineidrunpost) | **Post** /project/{project_id}/pipeline/{pipeline_id}/run | Run pipeline
 *WorkflowsAPI* | [**ProjectProjectIdRunRunIdGet**](docs/WorkflowsAPI.md#projectprojectidrunrunidget) | **Get** /project/{project_id}/run/{run_id} | Get run
 *WorkflowsAPI* | [**ProjectProjectIdRunRunIdStopPost**](docs/WorkflowsAPI.md#projectprojectidrunrunidstoppost) | **Post** /project/{project_id}/run/{run_id}/stop | Stop run

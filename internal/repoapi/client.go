@@ -13,15 +13,12 @@ import (
 	"time"
 )
 
-// Client talks to the Repo API and authenticates with X-API-KEY (or,
-// temporarily, a Bearer token -- see SetBearerToken).
+// Client talks to the Repo API and authenticates with X-API-KEY.
 type Client struct {
-	baseURL     string
-	apiKey      string
-	bearerToken string
-	useBearer   bool
-	projectID   string
-	http        *http.Client
+	baseURL   string
+	apiKey    string
+	projectID string
+	http      *http.Client
 }
 
 // New returns a configured API client.
@@ -38,22 +35,6 @@ func New(baseURL, apiKey, projectID string) *Client {
 
 // ProjectID returns the configured project ID.
 func (c *Client) ProjectID() string { return c.projectID }
-
-// SetBearerToken switches the client to authenticate with
-// "Authorization: Bearer <token>" instead of X-API-KEY.
-//
-// TEMPORARY: some prod environments don't yet accept X-API-KEY for the Repo
-// product and require a Bearer token exchanged via the same IAM flow as
-// Workflow Studio (see --repo-use-wf-auth in cmd/root.go). Remove this once
-// the Repo product's own X-API-KEY auth works everywhere.
-func (c *Client) SetBearerToken(token string) {
-	c.bearerToken = token
-	c.useBearer = true
-}
-
-// UsesBearerAuth reports whether SetBearerToken has switched this client
-// away from X-API-KEY auth.
-func (c *Client) UsesBearerAuth() bool { return c.useBearer }
 
 // APIError is a non-2xx response from the API.
 type APIError struct {
@@ -101,11 +82,7 @@ func (c *Client) Do(ctx context.Context, method, path string, query url.Values, 
 	if err != nil {
 		return fmt.Errorf("build request: %w", err)
 	}
-	if c.useBearer {
-		req.Header.Set("Authorization", "Bearer "+c.bearerToken)
-	} else {
-		req.Header.Set("X-API-KEY", c.apiKey)
-	}
+	req.Header.Set("X-API-KEY", c.apiKey)
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}

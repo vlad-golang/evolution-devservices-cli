@@ -22,7 +22,7 @@ import (
 // PipelinesAPIService PipelinesAPI service
 type PipelinesAPIService service
 
-type PipelinesAPIProjectProjectIdJobJobIdLogListPostRequest struct {
+type PipelinesAPIProjectProjectIdJobJobIdLogListGetRequest struct {
 	ctx        context.Context
 	ApiService *PipelinesAPIService
 	projectId  string
@@ -31,27 +31,27 @@ type PipelinesAPIProjectProjectIdJobJobIdLogListPostRequest struct {
 }
 
 // Request body
-func (r PipelinesAPIProjectProjectIdJobJobIdLogListPostRequest) Request(request GitSbercloudTechDsworksServicesPipelineSrcInternalApplicationRequestJobLogList) PipelinesAPIProjectProjectIdJobJobIdLogListPostRequest {
+func (r PipelinesAPIProjectProjectIdJobJobIdLogListGetRequest) Request(request GitSbercloudTechDsworksServicesPipelineSrcInternalApplicationRequestJobLogList) PipelinesAPIProjectProjectIdJobJobIdLogListGetRequest {
 	r.request = &request
 	return r
 }
 
-func (r PipelinesAPIProjectProjectIdJobJobIdLogListPostRequest) Execute() (*GitSbercloudTechDsworksServicesPipelineSrcInternalApplicationResponseJobLogList, *http.Response, error) {
-	return r.ApiService.ProjectProjectIdJobJobIdLogListPostExecute(r)
+func (r PipelinesAPIProjectProjectIdJobJobIdLogListGetRequest) Execute() (*GitSbercloudTechDsworksServicesPipelineSrcInternalApplicationResponseJobLogList, *http.Response, error) {
+	return r.ApiService.ProjectProjectIdJobJobIdLogListGetExecute(r)
 }
 
 /*
-ProjectProjectIdJobJobIdLogListPost Get job log entries
+ProjectProjectIdJobJobIdLogListGet Get job logs
 
-Get paginated job log entries
+Get job logs
 
 	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
 	@param projectId Project ID
 	@param jobId Job ID
-	@return PipelinesAPIProjectProjectIdJobJobIdLogListPostRequest
+	@return PipelinesAPIProjectProjectIdJobJobIdLogListGetRequest
 */
-func (a *PipelinesAPIService) ProjectProjectIdJobJobIdLogListPost(ctx context.Context, projectId string, jobId string) PipelinesAPIProjectProjectIdJobJobIdLogListPostRequest {
-	return PipelinesAPIProjectProjectIdJobJobIdLogListPostRequest{
+func (a *PipelinesAPIService) ProjectProjectIdJobJobIdLogListGet(ctx context.Context, projectId string, jobId string) PipelinesAPIProjectProjectIdJobJobIdLogListGetRequest {
+	return PipelinesAPIProjectProjectIdJobJobIdLogListGetRequest{
 		ApiService: a,
 		ctx:        ctx,
 		projectId:  projectId,
@@ -62,15 +62,15 @@ func (a *PipelinesAPIService) ProjectProjectIdJobJobIdLogListPost(ctx context.Co
 // Execute executes the request
 //
 //	@return GitSbercloudTechDsworksServicesPipelineSrcInternalApplicationResponseJobLogList
-func (a *PipelinesAPIService) ProjectProjectIdJobJobIdLogListPostExecute(r PipelinesAPIProjectProjectIdJobJobIdLogListPostRequest) (*GitSbercloudTechDsworksServicesPipelineSrcInternalApplicationResponseJobLogList, *http.Response, error) {
+func (a *PipelinesAPIService) ProjectProjectIdJobJobIdLogListGetExecute(r PipelinesAPIProjectProjectIdJobJobIdLogListGetRequest) (*GitSbercloudTechDsworksServicesPipelineSrcInternalApplicationResponseJobLogList, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodPost
+		localVarHTTPMethod  = http.MethodGet
 		localVarPostBody    interface{}
 		formFiles           []formFile
 		localVarReturnValue *GitSbercloudTechDsworksServicesPipelineSrcInternalApplicationResponseJobLogList
 	)
 
-	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "PipelinesAPIService.ProjectProjectIdJobJobIdLogListPost")
+	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "PipelinesAPIService.ProjectProjectIdJobJobIdLogListGet")
 	if err != nil {
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}

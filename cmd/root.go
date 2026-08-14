@@ -25,27 +25,18 @@ It is designed to be safely driven by automation and AI agents via the
 
 	// Global flags. Repo and Workflow Studio are separate products with
 	// separate credentials, so their flags/env vars are namespaced
-	// per-product (repo-*, wf-*); --project and --iam-url are shared.
+	// per-product (repo-*, wf-*); --project is shared.
 	root.PersistentFlags().String("project", "",
 		"Project ID, shared across products (env EDS_PROJECT_ID)")
-	root.PersistentFlags().String("iam-url", "",
-		"cloud.ru IAM token endpoint used to exchange wf-key-id/secret for a Bearer token (env EDS_IAM_URL)")
 
 	root.PersistentFlags().String("repo-api-url", "",
 		"Repo product API base URL (default https://devtools.api.cloud.ru/repo/api/v1; env EDS_REPO_API_URL)")
-	root.PersistentFlags().String("repo-api-key", "",
-		"Repo product API key (env EDS_REPO_API_KEY; overrides saved config)")
+	root.PersistentFlags().String("api-key", "",
+		"Repo product API key (env EDS_API_KEY; overrides saved config)")
 	root.PersistentFlags().String("repo-git-host", "",
 		"Repo product git smart-HTTP host (default repo.cloud.ru; env EDS_REPO_GIT_HOST)")
-	root.PersistentFlags().Bool("repo-use-wf-auth", false,
-		"TEMPORARY: authenticate Repo product calls with the Workflow Studio Bearer token (wf-key-id/wf-secret via IAM) instead of X-API-KEY (env EDS_REPO_USE_WF_AUTH); remove once Repo's own API key auth works everywhere")
-
 	root.PersistentFlags().String("wf-api-url", "",
 		"Workflow Studio product API base URL (env EDS_WF_API_URL)")
-	root.PersistentFlags().String("wf-key-id", "",
-		"Workflow Studio key id (env EDS_WF_KEY_ID; separate credential from --repo-api-key)")
-	root.PersistentFlags().String("wf-secret", "",
-		"Workflow Studio secret (env EDS_WF_SECRET)")
 
 	root.PersistentFlags().Bool("json", false,
 		"force JSON output")
