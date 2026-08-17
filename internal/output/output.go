@@ -111,14 +111,14 @@ func (p *Printer) KeyValue(pairs [][2]string) {
 		return
 	}
 
-	max := 0
+	maxLen := 0
 	for _, kv := range pairs {
-		if len(kv[0]) > max {
-			max = len(kv[0])
+		if len(kv[0]) > maxLen {
+			maxLen = len(kv[0])
 		}
 	}
 	for _, kv := range pairs {
-		fmt.Fprintf(p.W, "%-*s  %s\n", max, kv[0]+":", kv[1])
+		fmt.Fprintf(p.W, "%-*s  %s\n", maxLen, kv[0]+":", kv[1])
 	}
 }
 

@@ -1,0 +1,54 @@
+version: "2"
+formatters:
+  enable:
+    - golines # checks if code is formatted, and fixes long lines
+    - gofumpt # enforces a stricter format than 'gofmt', while being backwards compatible
+  settings:
+    golines:
+      max-len: 130
+      reformat-tags: false
+linters:
+  enable:
+    - copyloopvar # Detects variable copies in loops that could cause bugs
+    - exhaustive # Ensures enum switch statements are exhaustive
+    - gocyclo # Checks cyclomatic complexity of functions
+    - gosec # Inspects source code for security problems
+    - misspell # Finds commonly misspelled English words
+    #- mnd # Detects magic numbers (constants with no explanation)
+    - nakedret # Finds naked returns in functions longer than a few lines
+    - revive # A fast, configurable, extensible, flexible, and beautiful linter for Go
+    - staticcheck # The advanced Go linter (go vet on steroids)
+    - modernize # Suggests simplifications to Go code, using modern language and library features
+    - errorlint # finds code that will cause problems with the error wrapping scheme introduced in Go 1.13
+    - testifylint # checks usage of github.com/stretchr/testify
+    - sloglint # ensure consistent code style when using log/slog
+    - nolintlint # reports ill-formed or insufficient nolint directives
+    - mirror # reports wrong mirror patterns of bytes/strings usage
+    - intrange # finds places where for loops could make use of an integer range
+    - gocritic # provides diagnostics that check for bugs, performance and style issues
+    - funcorder # checks the order of functions, methods, and constructors
+    - exptostd # detects functions from golang.org/x/exp/ that can be replaced by std functions
+    - errname # checks that sentinel errors are prefixed with the Err and error types are suffixed with the Error
+    - errcheck # checking for unchecked errors, these unchecked errors can be critical bugs in some cases
+    - embeddedstructfieldcheck # checks embedded types in structs
+    - asciicheck # checks that your code does not contain non-ASCII identifiers
+    - prealloc # [premature optimization, but can be used in some cases] finds slice declarations that could potentially be preallocated
+    #- wrapcheck # checks that errors returned from external packages are wrapped
+    #- goconst # finds repeated strings that could be replaced by a constant
+    - testpackage # Linter that makes you use a separate _test package.
+  settings:
+    gocyclo:
+      min-complexity: 40
+    exhaustive:
+      default-signifies-exhaustive: true
+  exclusions:
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - path: '_test\.go'
+        linters:
+          - goconst
+          - gosec

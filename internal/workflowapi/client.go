@@ -112,7 +112,12 @@ func (c *Client) Do(ctx context.Context, method, path string, query url.Values, 
 	if out != nil && len(respBody) > 0 {
 		if err := json.Unmarshal(respBody, out); err != nil {
 			if requestID != "" {
-				return fmt.Errorf("decode response: %w (body: %s, request-id: %s)", err, truncate(string(respBody), 256), requestID)
+				return fmt.Errorf(
+					"decode response: %w (body: %s, request-id: %s)",
+					err,
+					truncate(string(respBody), 256),
+					requestID,
+				)
 			}
 			return fmt.Errorf("decode response: %w (body: %s)", err, truncate(string(respBody), 256))
 		}
@@ -165,7 +170,7 @@ func parseError(status int, body []byte, requestID string) error {
 		msg = errResp.Error
 	}
 	if msg == "" && len(validResp.Errors) > 0 {
-		var parts []string
+		parts := make([]string, 0, len(validResp.Errors))
 		for field, errs := range validResp.Errors {
 			parts = append(parts, fmt.Sprintf("%s: %s", field, strings.Join(errs, ", ")))
 		}
@@ -174,9 +179,9 @@ func parseError(status int, body []byte, requestID string) error {
 	return &APIError{StatusCode: status, Message: msg, Body: string(body), RequestID: requestID}
 }
 
-func truncate(s string, max int) string {
-	if len(s) <= max {
+func truncate(s string, maxLen int) string {
+	if len(s) <= maxLen {
 		return s
 	}
-	return s[:max] + "…"
+	return s[:maxLen] + "…"
 }

@@ -106,7 +106,7 @@ func (c *Config) Save() error {
 		return fmt.Errorf("create config dir: %w", err)
 	}
 
-	data, err := json.MarshalIndent(c, "", "  ")
+	data, err := json.MarshalIndent(c, "", "  ") //nolint:gosec // config file intentionally stores API key
 	if err != nil {
 		return fmt.Errorf("marshal config: %w", err)
 	}
@@ -138,9 +138,9 @@ func configPath() (string, error) {
 }
 
 func expand(p string) string {
-	if strings.HasPrefix(p, "~") {
+	if after, ok := strings.CutPrefix(p, "~"); ok {
 		if home, err := os.UserHomeDir(); err == nil {
-			return filepath.Join(home, strings.TrimPrefix(p, "~"))
+			return filepath.Join(home, after)
 		}
 	}
 	return p

@@ -6,7 +6,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/cloud-ru/evolution-devservices-cli/internal/output"
-	"github.com/cloud-ru/evolution-devservices-cli/internal/workflowapi"
 )
 
 // newRunCmd creates the parent `eds wf run` command and all its subcommands.
@@ -18,7 +17,6 @@ func newRunCmd() *cobra.Command {
 		Short: "Inspect and control Workflow Studio pipeline runs",
 	}
 	cmd.AddCommand(newRunShowCmd())
-	cmd.AddCommand(newRunListCmd())
 	cmd.AddCommand(newRunStopCmd())
 	return cmd
 }
@@ -65,63 +63,6 @@ func newRunShowCmd() *cobra.Command {
 			return nil
 		},
 	}
-	return cmd
-}
-
-func newRunListCmd() *cobra.Command {
-	var (
-		pipelineID string
-		runType    string
-		sort       string
-		limit      int
-		offset     int
-	)
-
-	cmd := &cobra.Command{
-		Use:   "list",
-		Short: "List Workflow Studio pipeline runs",
-		Example: `  eds wf run list --pipeline-id my-pipeline-id
-  eds wf run list --type workflow --limit 20`,
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			ctx, err := resolveContext(cmd)
-			if err != nil {
-				return err
-			}
-			if err := ctx.ensureWorkflowAuth(cmd.Context()); err != nil {
-				return err
-			}
-
-			resp, err := ctx.WorkflowAPI.ListRuns(cmd.Context(), workflowapi.ListRunsOptions{
-				PipelineID: pipelineID,
-				Type:       runType,
-				Sort:       sort,
-				Limit:      limit,
-				Offset:     offset,
-			})
-			if err != nil {
-				return err
-			}
-
-			if ctx.Printer.Format == output.FormatJSON {
-				return ctx.Printer.PrintJSON(resp)
-			}
-
-			headers := []string{"ID", "PIPELINE_ID", "BRANCH", "STATUS", "UPDATED"}
-			rows := make([][]string, 0, len(resp.Runs))
-			for _, r := range resp.Runs {
-				rows = append(rows, []string{r.ID, r.PipelineID, r.Branch, string(r.Status), output.HumanTime(r.UpdatedAt)})
-			}
-			ctx.Printer.Table(headers, rows)
-			fmt.Fprintf(cmd.OutOrStdout(), "Showing %d of %d\n", len(resp.Runs), resp.Total)
-			return nil
-		},
-	}
-
-	cmd.Flags().StringVar(&pipelineID, "pipeline-id", "", "filter by pipeline id")
-	cmd.Flags().StringVar(&runType, "type", "", "filter by pipeline type: cicd, workflow")
-	cmd.Flags().StringVar(&sort, "sort", "", "sort order")
-	cmd.Flags().IntVar(&limit, "limit", 50, "page size")
-	cmd.Flags().IntVar(&offset, "offset", 0, "offset")
 	return cmd
 }
 

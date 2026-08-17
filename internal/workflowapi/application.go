@@ -181,7 +181,11 @@ func (c *Client) CreateDeployment(ctx context.Context, applicationID string) (*D
 
 // ListDeployments lists deployments for an application, most recent first
 // when Sort is SortCreatedAtDesc.
-func (c *Client) ListDeployments(ctx context.Context, applicationID string, opts ListDeploymentsOptions) (*DeploymentListResponse, error) {
+func (c *Client) ListDeployments(
+	ctx context.Context,
+	applicationID string,
+	opts ListDeploymentsOptions,
+) (*DeploymentListResponse, error) {
 	if c.projectID == "" {
 		return nil, fmt.Errorf("project id is not configured; use --project or EDS_PROJECT_ID")
 	}

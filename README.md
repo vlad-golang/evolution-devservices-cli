@@ -123,14 +123,9 @@ eds wf app deployments <id>                           list publish history
 eds wf app status <id>                                run status + live URL
 
 eds wf run show <id>                          show a run's status, stages and jobs
-eds wf run list [--pipeline-id ID]             list runs
 eds wf run stop <id>                          stop a running run
 
-eds wf job show <id>                          show job details
-eds wf job list --run-id ID                   list jobs for a run
-eds wf job logs <id>                          stream a job's logs
-eds wf job retry <id>                         retry a failed/canceled job
-eds wf job stop <id>                          stop a running job
+eds wf job logs <id>                          get logs for a job
 ```
 
 ### Login
@@ -209,7 +204,7 @@ eds wf app status "$APP_ID" --json | jq -r '.application.run.stages[].jobs[] | s
 
 `eds wf run` and `eds wf job` are the lower-level primitives behind `eds wf
 app status` — use them directly when you need to inspect or control a
-particular run/job (e.g. `eds wf run stop`, `eds wf job retry`).
+particular run (e.g. `eds wf run stop`) or stream job logs (`eds wf job logs`).
 
 ## File upload / push
 
@@ -258,7 +253,7 @@ curl -fsSL https://storage.cloud.ru/my-bucket/evolution-devservices-cli/install.
 ## Development
 
 ```bash
-make vet           # go vet ./...
+make lint
 make test          # go test ./...
 make build         # current platform into ./bin/
 make build-all     # full matrix into ./dist/
@@ -279,8 +274,8 @@ cmd/
   repo.go                       # `eds repo list|create|show|delete|clone`
   wf.go                         # `eds wf` parent command (groups app/run/job)
   app.go                        # `eds wf app create|list|show|update|delete|deploy|deployments|status`
-  run.go                        # `eds wf run show|list|stop`
-  job.go                        # `eds wf job show|list|logs|retry|stop`
+  run.go                        # `eds wf run show|stop`
+  job.go                        # `eds wf job logs`
 internal/
   config/                       # disk config + env overrides
   output/                       # JSON / table formatting
