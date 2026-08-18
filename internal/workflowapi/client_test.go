@@ -61,7 +61,7 @@ func TestDo_SetTokenChangesSubsequentRequests(t *testing.T) {
 }
 
 func TestDo_ErrorShape_ErrorField(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte(`{"error":"invalid pipeline"}`))
 	}))
@@ -80,7 +80,7 @@ func TestDo_ErrorShape_ErrorField(t *testing.T) {
 }
 
 func TestDo_ErrorShape_ValidationErrors(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		_, _ = w.Write([]byte(`{"errors":{"branch":["is required"]}}`))
 	}))
@@ -99,7 +99,7 @@ func TestDo_ErrorShape_ValidationErrors(t *testing.T) {
 }
 
 func TestDo_ErrorShape_EmptyBody(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer srv.Close()
@@ -117,7 +117,7 @@ func TestDo_ErrorShape_EmptyBody(t *testing.T) {
 }
 
 func TestDo_RequestIDIsCapturedFromHeaderAndIncludedInError(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("X-Request-Id", "wf-req-7")
 		w.WriteHeader(http.StatusBadGateway)
 		_, _ = w.Write([]byte(`{"error":"upstream down"}`))

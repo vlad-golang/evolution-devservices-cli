@@ -42,7 +42,7 @@ func TestDo_SuccessDecodesJSONAndSendsAPIKey(t *testing.T) {
 }
 
 func TestDo_ErrorShape_ErrorField(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte(`{"error":"invalid name"}`))
 	}))
@@ -64,7 +64,7 @@ func TestDo_ErrorShape_ErrorField(t *testing.T) {
 }
 
 func TestDo_ErrorShape_MessageField(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte(`{"message":"something broke"}`))
 	}))
@@ -83,7 +83,7 @@ func TestDo_ErrorShape_MessageField(t *testing.T) {
 }
 
 func TestDo_ErrorShape_ValidationErrors(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		_, _ = w.Write([]byte(`{"errors":{"name":["is required"]}}`))
 	}))
@@ -102,7 +102,7 @@ func TestDo_ErrorShape_ValidationErrors(t *testing.T) {
 }
 
 func TestDo_ErrorShape_EmptyBody(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer srv.Close()
@@ -120,7 +120,7 @@ func TestDo_ErrorShape_EmptyBody(t *testing.T) {
 }
 
 func TestDo_RequestIDIsCapturedFromHeaderAndIncludedInError(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("X-Request-Id", "req-42")
 		w.WriteHeader(http.StatusBadGateway)
 		_, _ = w.Write([]byte(`{"error":"upstream down"}`))
@@ -144,7 +144,7 @@ func TestDo_RequestIDIsCapturedFromHeaderAndIncludedInError(t *testing.T) {
 }
 
 func TestDo_2xxWithNoOutTargetDoesNotError(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	defer srv.Close()
