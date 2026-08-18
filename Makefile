@@ -6,7 +6,6 @@
 #   make build-one     - helper invoked by build-all (GOOS=... GOARCH=...)
 #   make clean         - remove ./bin and ./dist
 #   make test          - run `go test ./...`
-#   make vet           - run `go vet ./...`
 #   make tidy          - run `go mod tidy`
 #   make install       - `go install` into $GOBIN
 #   make release       - build-all + sha256 sums
@@ -47,7 +46,7 @@ LDFLAGS       := -s -w -X main.version=$(VERSION)
 # ---- targets --------------------------------------------------------------
 
 .PHONY: all
-all: vet test build
+all: lint test build
 
 .PHONY: build
 build:
@@ -155,10 +154,6 @@ install:
 test:
 	go test $(GOFLAGS) ./...
 
-.PHONY: vet
-vet:
-	go vet ./...
-
 .PHONY: tidy
 tidy:
 	go mod tidy
@@ -177,8 +172,13 @@ help:
 	@echo "  upload          build-all + publish to S3 (BUCKET=... VERSION=...)"
 	@echo "  upload-latest   only update the 'latest' pointer in the bucket"
 	@echo "  install         go install into \$$GOBIN"
-	@echo "  test, vet, tidy standard Go targets"
+	@echo "  lint            run golangci-lint"
+	@echo "  test, tidy standard Go targets"
 	@echo "  clean           remove ./bin and ./dist"
 
 openapi-generator:
 	openapi-generator-cli generate -i openapi-public.yaml -g go -o ./internal/workflow_client -c .openapi-generator.yaml
+
+.PHONY: lint
+lint:
+	golangci-lint run --fix

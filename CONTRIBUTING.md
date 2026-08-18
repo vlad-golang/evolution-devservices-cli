@@ -24,13 +24,13 @@ Go 1.22+ is required. Target platforms are Linux + macOS only.
 Useful targets:
 
 ```bash
-make vet           # go vet ./...
+make lint
 make test          # go test ./...
 make build         # current platform into ./bin/
 make build-all     # full matrix into ./dist/
 ```
 
-Run `make vet` and `make test` before opening a PR — CI runs the same checks.
+Run `make lint` and `make test` before opening a PR — CI runs the same checks.
 
 ## Code conventions
 
@@ -54,7 +54,7 @@ In short:
 
 1. Fork the repo and create a branch off `main`.
 2. Make your change, with tests where it makes sense.
-3. Run `make vet` and `make test`.
+3. Run `make lint` and `make test`.
 4. Open a pull request describing what changed and why.
 
 ## Reporting a security issue

@@ -30,13 +30,13 @@ publishes it, and `eds wf app status` (or the lower-level `eds wf run`/
 make build         # build for current platform -> ./bin/eds
 make build-all      # cross-compile darwin/linux x amd64/arm64 -> ./dist/
 make test           # go test ./...
-make vet            # go vet ./...
+make lint           
 make tidy           # go mod tidy
 make clean          # remove ./bin and ./dist
 ```
 
 There are currently no `_test.go` files in the repo, so `make test` is a no-op
-until tests are added. `make all` runs `vet test build` in sequence.
+until tests are added. `make all` runs `lint test build` in sequence.
 
 Building directly without make:
 

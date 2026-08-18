@@ -3,8 +3,6 @@ package workflowapi
 import (
 	"context"
 	"fmt"
-	"net/url"
-	"strconv"
 )
 
 // RunStatus is the lifecycle state of a pipeline run.
@@ -47,16 +45,6 @@ type RunListResponse struct {
 	Total int   `json:"total"`
 }
 
-// ListRunsOptions configures ListRuns.
-type ListRunsOptions struct {
-	PipelineID string
-	Type       string // "cicd" or "workflow"
-	Sort       string
-	WithConfig bool
-	Limit      int
-	Offset     int
-}
-
 // GetRun fetches a single run by id, including its stages and jobs.
 func (c *Client) GetRun(ctx context.Context, id string) (*Run, error) {
 	if c.projectID == "" {
@@ -64,38 +52,6 @@ func (c *Client) GetRun(ctx context.Context, id string) (*Run, error) {
 	}
 	var out Run
 	if err := c.Do(ctx, "GET", fmt.Sprintf("/project/%s/run/%s", c.projectID, id), nil, nil, &out); err != nil {
-		return nil, err
-	}
-	return &out, nil
-}
-
-// ListRuns lists runs in the configured project.
-func (c *Client) ListRuns(ctx context.Context, opts ListRunsOptions) (*RunListResponse, error) {
-	if c.projectID == "" {
-		return nil, fmt.Errorf("project id is not configured; use --project or EDS_PROJECT_ID")
-	}
-	q := url.Values{}
-	if opts.PipelineID != "" {
-		q.Set("pipeline_id", opts.PipelineID)
-	}
-	if opts.Type != "" {
-		q.Set("type", opts.Type)
-	}
-	if opts.Sort != "" {
-		q.Set("sort", opts.Sort)
-	}
-	if opts.WithConfig {
-		q.Set("with_config", "true")
-	}
-	if opts.Limit > 0 {
-		q.Set("limit", strconv.Itoa(opts.Limit))
-	}
-	if opts.Offset > 0 {
-		q.Set("offset", strconv.Itoa(opts.Offset))
-	}
-
-	var out RunListResponse
-	if err := c.Do(ctx, "GET", fmt.Sprintf("/project/%s/run/list", c.projectID), q, nil, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil
