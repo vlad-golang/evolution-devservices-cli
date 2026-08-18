@@ -20,8 +20,8 @@ The CLI is explicitly designed to be **agent-friendly**: every command has
 stable `--json` output, config comes from env vars, and `skill/SKILL.md`
 documents the CLI's contract for AI agents driving it. The primary
 agent-facing scenario is *ship a vibe-coded app*: `eds repo create` +
-`git push` gets code hosted, `eds wf app create` + `eds wf app deploy`
-publishes it, and `eds wf app status` (or the lower-level `eds wf run`/
+`git push` gets code hosted, `eds wf app create` publishes it (auto-deploy
+on create), and `eds wf app status` (or the lower-level `eds wf run`/
 `eds wf job`) tracks the rollout.
 
 ## Commands

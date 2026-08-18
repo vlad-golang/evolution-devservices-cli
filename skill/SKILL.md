@@ -59,7 +59,7 @@ Errors go to stderr and the process exits non-zero.
 | `eds repo show <id-or-name> [--json]`                                                                                                   | Show details: id, default_branch, size, clone URLs                                                                                                          |
 | `eds repo delete <id-or-name> [--force] [--json]`                                                                                       | Delete (irreversible; requires confirmation unless `--force`)                                                                                               |
 | `eds repo clone <id-or-name> [dir] [--ssh] [--target DIR]`                                                                              | Clone via local `git` CLI                                                                                                                                   |
-| `eds wf app create <name> --repository R\|--repository-url URL --branch B [--json]`                                                     | Create a Workflow Studio application from a repo + branch                                                                                                   |
+| `eds wf app create <name> --repository R\|--repository-url URL --branch B [--json]`                                                     | Create a Workflow Studio application from a repo + branch (auto-triggers first deploy)                                                                    |
 | `eds wf app list [--search S] [--sort created_at_asc\|created_at_desc] [--json]`                                                        | List applications                                                                                                                                           |
 | `eds wf app show <id> [--json]`                                                                                                         | Show application details (status, run_id, pipeline_id, ...)                                                                                                 |
 | `eds wf app update <id> --branch B [--name N] [--json]`                                                                                 | Update an application's name/branch                                                                                                                         |
@@ -308,7 +308,7 @@ eds repo list --json | jq '.repositories[].name'
 # 3. write
 NEW_REPO=$(eds repo create my-app --json | jq -r '.id')
 
-# 4. deploy
+# 4. deploy (create auto-triggers the first deploy)
 APP_ID=$(eds wf app create my-app --repository "$NEW_REPO" --branch main --json | jq -r '.id')
 eds wf app status "$APP_ID" --json | jq '{status: .application.status, url: .latest_deployment.url}'
 ```

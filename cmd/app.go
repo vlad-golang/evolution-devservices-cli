@@ -43,11 +43,11 @@ func newAppCreateCmd() *cobra.Command {
 		Use:   "create <name>",
 		Short: "Create a Workflow Studio application from a repository",
 		Args:  cobra.ExactArgs(1),
-		Long: `create wires a repository + branch to a deploy pipeline.
+		Long: `create wires a repository + branch to a deploy pipeline and
+immediately triggers the first deployment.
 
 The repository can be an existing "eds repo" repository (--repository,
-accepts either its id or its name) or an external git URL (--repository-url).
-Use "eds wf app deploy" afterwards to actually run the pipeline and publish.`,
+accepts either its id or its name) or an external git URL (--repository-url).`,
 		Example: `  eds repo create my-site && eds wf app create my-site --repository my-site --branch main
   eds wf app create my-site --repository-url https://github.com/user/my-site --branch main`,
 		RunE: func(cmd *cobra.Command, args []string) error {
