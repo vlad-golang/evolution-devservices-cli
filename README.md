@@ -113,7 +113,7 @@ eds repo show <id-or-name>                 show repository details
 eds repo delete <id-or-name> [--force]     delete a repository
 eds repo clone <id-or-name> [dir] [--ssh]  clone via local git CLI
 
-eds wf app create <name> --repository R|--repository-url URL --branch B   create a Workflow Studio application
+eds wf app create <name> --repository R|--repository-url URL --branch B   create and auto-deploy a Workflow Studio application
 eds wf app list                                       list applications
 eds wf app show <id>                                  show application details
 eds wf app update <id> --branch B [--name N]          update name/branch
@@ -185,13 +185,19 @@ eds repo clone my-site && cd my-site
 # ...add code + Dockerfile...
 git add . && git commit -m "init" && git push origin main
 
-# 2. Wire it to a Workflow Studio application
-APP_ID=$(eds wf app create my-site --repository my-site --branch main --json | jq -r '.id')
+# 2. Wire it to a Workflow Studio application. Creating it auto-triggers the
+#    first deploy — you don't need a separate `deploy` call right after create.
+APP_ID=$(eds wf app create my-site --repository "$REPO_ID" --branch main --json | jq -r '.id')
 
-# 3. Publish it
-eds wf app deploy "$APP_ID" --json | jq -r '.run_id'
-
-# 4. Poll status until it's done, then read the live URL
+# 3. Poll until it's actually live. Check application.status (not just run
+#    status) because "publishing" can last well after the run already reports
+#    "done".
+for i in $(seq 1 20); do
+  STATUS=$(eds wf app status "$APP_ID" --json | jq -r '.application.status')
+  echo "status: $STATUS"
+  [ "$STATUS" = "running" ] || [ "$STATUS" = "error" ] && break
+  sleep 15
+done
 eds wf app status "$APP_ID" --json | jq '{status: .application.status, url: .latest_deployment.url}'
 ```
 
