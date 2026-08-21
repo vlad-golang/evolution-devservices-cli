@@ -59,14 +59,13 @@ Errors go to stderr and the process exits non-zero.
 | `eds repo show <id-or-name> [--json]`                                                                                                   | Show details: id, default_branch, size, clone URLs                                                                                                          |
 | `eds repo delete <id-or-name> [--force] [--json]`                                                                                       | Delete (irreversible; requires confirmation unless `--force`)                                                                                               |
 | `eds repo clone <id-or-name> [dir] [--ssh] [--target DIR]`                                                                              | Clone via local `git` CLI                                                                                                                                   |
-| `eds wf app create <name> --repository R\|--repository-url URL --branch B [--json]`                                                     | Create a Workflow Studio application from a repo + branch (auto-triggers first deploy)                                                                    |
+| `eds wf app create <name> --repository R\|--repository-url URL --branch B [--json]`                                                     | Create a Workflow Studio application from a repo + branch                                                                                                   |
 | `eds wf app list [--search S] [--sort created_at_asc\|created_at_desc] [--json]`                                                        | List applications                                                                                                                                           |
 | `eds wf app show <id> [--json]`                                                                                                         | Show application details (status, run_id, pipeline_id, ...)                                                                                                 |
 | `eds wf app update <id> --branch B [--name N] [--json]`                                                                                 | Update an application's name/branch                                                                                                                         |
 | `eds wf app delete <id> [--force] [--json]`                                                                                             | Delete an application and its deployments (irreversible)                                                                                                    |
 | `eds wf app deploy <id> [--json]`                                                                                                       | Run the pipeline and publish (the "deploy" action)                                                                                                          |
 | `eds wf app deployments <id> [--json]`                                                                                                  | List publish history for an application                                                                                                                     |
-| `eds wf app status <id> [--json]`                                                                                                       | Convenience: run status + stage/job breakdown + live URL                                                                                                    |
 | `eds wf run show <id> [--json]` / `eds wf run stop <id>`                                | Inspect/control a pipeline run                                                                                                                              |
 | `eds wf job logs <id>`                                                                  | Stream job logs                                                                                                                                             |
 | `eds login --api-key <KEY> --project <ID> [--repo-api-url URL]`                                                                         | Persist credentials (one-time setup)                                                                                                                      |
@@ -209,12 +208,12 @@ APP_ID=$(eds wf app create my-site --repository "$REPO_ID" --branch main --json 
 #    -> running (live) or error, and "publishing" can last well after the
 #    underlying run already reports "done" (the container is still starting).
 for i in $(seq 1 20); do
-  STATUS=$(eds wf app status "$APP_ID" --json | jq -r '.application.status')
+  STATUS=$(eds wf app show "$APP_ID" --json | jq -r '.status')
   echo "status: $STATUS"
   [ "$STATUS" = "running" ] || [ "$STATUS" = "error" ] && break
   sleep 15
 done
-eds wf app status "$APP_ID" --json | jq '{status: .application.status, url: .latest_deployment.url}'
+eds wf app show "$APP_ID" --json | jq '{status: .status, url: .repository_url}'
 ```
 
 To redeploy later (e.g. after a new push), skip straight to `eds wf app
@@ -245,8 +244,8 @@ built for unprivileged operation.
 ### Debug a failed deployment
 
 ```bash
-eds wf app status "$APP_ID" --json | \
-  jq -r '.application.run.stages[].jobs[] | select(.status=="failed") | .id' | \
+eds wf app show "$APP_ID" --json | \
+  jq -r '.run.stages[].jobs[] | select(.status=="failed") | .id' | \
   while read -r JOB_ID; do eds wf job logs "$JOB_ID"; done
 ```
 
@@ -308,7 +307,7 @@ eds repo list --json | jq '.repositories[].name'
 # 3. write
 NEW_REPO=$(eds repo create my-app --json | jq -r '.id')
 
-# 4. deploy (create auto-triggers the first deploy)
+# 4. deploy
 APP_ID=$(eds wf app create my-app --repository "$NEW_REPO" --branch main --json | jq -r '.id')
-eds wf app status "$APP_ID" --json | jq '{status: .application.status, url: .latest_deployment.url}'
+eds wf app show "$APP_ID" --json | jq '{status: .status, url: .repository_url}'
 ```
