@@ -113,7 +113,7 @@ eds repo show <id-or-name>                 show repository details
 eds repo delete <id-or-name> [--force]     delete a repository
 eds repo clone <id-or-name> [dir] [--ssh]  clone via local git CLI
 
-eds wf app create <name> --repository R|--repository-url URL --branch B   create a Workflow Studio application
+eds wf app create <name> --repository R|--repository-url URL --branch B   create and auto-deploy a Workflow Studio application
 eds wf app list                                       list applications
 eds wf app show <id>                                  show application details
 eds wf app update <id> --branch B [--name N]          update name/branch
@@ -184,14 +184,21 @@ eds repo clone my-site && cd my-site
 # ...add code + Dockerfile...
 git add . && git commit -m "init" && git push origin main
 
-# 2. Wire it to a Workflow Studio application
-APP_ID=$(eds wf app create my-site --repository my-site --branch main --json | jq -r '.id')
+# 2. Wire it to a Workflow Studio application. Creating it auto-triggers the
+#    first deploy — you don't need a separate `deploy` call right after create.
+APP_ID=$(eds wf app create my-site --repository "$REPO_ID" --branch main --json | jq -r '.id')
 
-# 3. Publish it
-eds wf app deploy "$APP_ID" --json | jq -r '.run_id'
-
-# 4. Poll status until it's done, then read the live URL
-eds wf app show "$APP_ID" --json | jq '{status: .status, url: .repository_url}'
+# 3. Poll until it's actually live. Check application.status (not just run
+#    status) because "publishing" can last well after the run already reports
+#    "done".
+for i in $(seq 1 20); do
+  STATUS=$(eds wf app show "$APP_ID" --json | jq -r '.status')
+  echo "status: $STATUS"
+  [ "$STATUS" = "running" ] || [ "$STATUS" = "error" ] && break
+  sleep 15
+done
+URL=$(eds wf app deployments "$APP_ID" --json | jq -r '.deployments[0].url')
+echo "url: $URL"
 ```
 
 If a deployment fails, drill into the failing job's logs:
@@ -201,9 +208,9 @@ eds wf app show "$APP_ID" --json | jq -r '.run.stages[].jobs[] | select(.status=
   | xargs -I{} eds wf job logs {}
 ```
 
-`eds wf run` and `eds wf job` are the lower-level primitives for inspecting
-and controlling a particular run (e.g. `eds wf run stop`) or streaming job
-logs (`eds wf job logs`).
+`eds wf run` and `eds wf job` are the lower-level primitives behind `eds wf
+app show` — use them directly when you need to inspect or control a
+particular run (e.g. `eds wf run stop`) or stream job logs (`eds wf job logs`).
 
 ## File upload / push
 
@@ -279,7 +286,7 @@ internal/
   config/                       # disk config + env overrides
   output/                       # JSON / table formatting
   repoapi/                      # thin HTTP client for the Repo product API
-  workflow_client/              # generated OpenAPI client for the Workflow Studio product API
+  workflow_client/              # generated OpenAPI client for Workflow Studio
 scripts/
   install.sh                    # one-liner installer (GitHub Releases by default)
 skill/

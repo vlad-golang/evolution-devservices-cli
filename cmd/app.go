@@ -40,11 +40,11 @@ func newAppCreateCmd() *cobra.Command {
 		Use:   "create <name>",
 		Short: "Create a Workflow Studio application from a repository",
 		Args:  cobra.ExactArgs(1),
-		Long: `create wires a repository + branch to a deploy pipeline.
+		Long: `create wires a repository + branch to a deploy pipeline and
+immediately triggers the first deployment.
 
 The repository can be an existing "eds repo" repository (--repository,
-accepts either its id or its name) or an external git URL (--repository-url).
-Use "eds wf app deploy" afterwards to actually run the pipeline and publish.`,
+accepts either its id or its name) or an external git URL (--repository-url).`,
 		Example: `  eds repo create my-site && eds wf app create my-site --repository my-site --branch main
   eds wf app create my-site --repository-url https://github.com/user/my-site --branch main`,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -73,14 +73,18 @@ Use "eds wf app deploy" afterwards to actually run the pipeline and publish.`,
 				}
 			}
 
+			req := workflowclient.GitSbercloudTechDsworksServicesPipelineSrcInternalApplicationRequestApplicationCreate{
+				Branch: branch,
+				Name:   &args[0],
+			}
+			if repositoryID != "" {
+				req.RepositoryId = &repositoryID
+			}
+			if repositoryURL != "" {
+				req.RepositoryUrl = &repositoryURL
+			}
 			app, _, err := ctx.WorkflowClient.ServicesAPI.ProjectProjectIdApplicationPost(cmd.Context(), ctx.ProjectID).
-				Request(workflowclient.GitSbercloudTechDsworksServicesPipelineSrcInternalApplicationRequestApplicationCreate{
-					Branch:        branch,
-					Name:          &args[0],
-					RepositoryId:  &repositoryID,
-					RepositoryUrl: &repositoryURL,
-					SpaceId:       nil,
-				}).Execute()
+				Request(req).Execute()
 			if err != nil {
 				return fmt.Errorf("workflow client application post: %w", err)
 			}
@@ -173,7 +177,7 @@ func newAppUpdateCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "update <application-id>",
-		Short: "Update an application's name or branch",
+		Short: "Update an application's branch (optionally name)",
 		Args:  cobra.ExactArgs(1),
 		Example: `  eds wf app update my-app-id --branch release
   eds wf app update my-app-id --name new-name --branch main`,
@@ -189,12 +193,15 @@ func newAppUpdateCmd() *cobra.Command {
 				return fmt.Errorf("--branch is required")
 			}
 
+			req := workflowclient.GitSbercloudTechDsworksServicesPipelineSrcInternalApplicationRequestApplicationUpdate{
+				Branch:  branch,
+				SpaceId: "",
+			}
+			if name != "" {
+				req.Name = &name
+			}
 			_, err = ctx.WorkflowClient.ServicesAPI.ProjectProjectIdApplicationApplicationIdPatch(cmd.Context(), ctx.ProjectID, args[0]).
-				Request(workflowclient.GitSbercloudTechDsworksServicesPipelineSrcInternalApplicationRequestApplicationUpdate{
-					Branch:  branch,
-					Name:    &name,
-					SpaceId: "",
-				}).
+				Request(req).
 				Execute()
 			if err != nil {
 				return fmt.Errorf("workflow client update application: %w", err)
@@ -258,7 +265,7 @@ func newAppDeployCmd() *cobra.Command {
 		Long: `deploy triggers a new run of the application's deploy pipeline.
 Use the returned run_id with "eds wf run show" to
 follow progress, and check the "url" field once it succeeds.`,
-		Example: `  eds wf app deploy my-app-id --json | jq -r '.run_id'`,
+		Example: `  eds wf app deploy my-app-id --json | jq -r '.deployment.run_id'`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx, err := resolveContext(cmd)
 			if err != nil {

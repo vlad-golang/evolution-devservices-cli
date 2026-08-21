@@ -20,9 +20,9 @@ The CLI is explicitly designed to be **agent-friendly**: every command has
 stable `--json` output, config comes from env vars, and `skill/SKILL.md`
 documents the CLI's contract for AI agents driving it. The primary
 agent-facing scenario is *ship a vibe-coded app*: `eds repo create` +
-`git push` gets code hosted, `eds wf app create` + `eds wf app deploy`
-publishes it, and `eds wf app show` / `eds wf run show` /
-`eds wf job logs` track the rollout.
+`git push` gets code hosted, `eds wf app create` publishes it (auto-deploy
+on create), and `eds wf app show` (or the lower-level `eds wf run`/
+`eds wf job`) tracks the rollout.
 
 ## Commands
 
@@ -59,19 +59,20 @@ genuinely internal and not tied to where the repo lives.
 
 ## Architecture
 
-Cobra-based CLI, one command per file under `cmd/`, thin API clients under
-`internal/repoapi/` (Repo product) and `internal/workflow_client/` (Workflow
-Studio).
+Cobra-based CLI, one command per file under `cmd/`, thin API client under
+`internal/repoapi/` (Repo product) and generated OpenAPI client under
+`internal/workflow_client/` (Workflow Studio).
 
 - `main.go` — entry point, wires `main.version` (ldflags) into `cmd.SetVersion`.
 - `cmd/root.go` — builds the root `eds` command, registers global persistent
   flags. Product-scoped: `--repo-api-url`, `--repo-git-host`
   (Repo product); `--wf-api-url` (Workflow Studio). Platform-level (shared,
   unprefixed): `--project`, `--api-key`. Plus `--json`, `--quiet`.
+the API client and printer.
 - `cmd/helpers.go` — `resolveContext(cmd)` is the entry point every subcommand
   calls first. It loads config, layers flag overrides on top (flags > env >
   file > defaults), and builds a `runtimeContext{Cfg, API, Printer, Quiet,
-  WorkflowClient}`. `requireAPIKey()` guards Repo-product commands.
+  ProjectID, WorkflowClient}`. `requireAPIKey()` guards Repo-product commands.
   `ensureWorkflowAuth(ctx)` guards Workflow Studio commands: it validates
   that `APIKey` is set (the same key is used for both products). Both helpers
   return the same friendly error when the key is missing.
@@ -88,9 +89,7 @@ Studio).
   repo+branch to a deploy pipeline; a **deployment** runs that pipeline and
   publishes it). `app create --repository` reuses `resolveRepoID` from
   `repo.go` to accept either a Repo-product UUID or name. `run.go`/`job.go`
-  are the lower-level primitives for inspecting runs and streaming job
-  logs. `job.go`'s `logs` command reads the job-logs endpoint as SSE and
-  prints each `data:` line to stdout.
+  are the lower-level primitives behind it.
   Note (observed empirically, not documented in the spec): `application.status`
   and `application.run.status` are separate lifecycles. Creating an
   application auto-triggers its first run; even after `run.status` reaches
@@ -132,12 +131,11 @@ Studio).
   `search` query param entirely when empty — the API treats an empty string
   as a literal (matches nothing) rather than a wildcard.
 - `internal/workflow_client/` — generated OpenAPI client for the Workflow
-  Studio API. `client.go` configures the HTTP client and sends `X-API-KEY`
-  (the same key as Repo). `api_services.go`, `api_workflows.go`, and
-  `api_pipelines.go` hold the application, run, and job API calls, all
-  scoped under `/project/{projectID}/...`.
-- `openapi-user.yaml` — OpenAPI (Swagger 2.0) spec for the Workflow Studio
-  user API; the source of truth for request/response shapes when extending
+  Studio user API (from `openapi-public.yaml`). Covers services, pipelines,
+  and workflows APIs. `cmd/` calls into this instead of the older hand-written
+  `internal/workflowapi`.
+- `openapi-public.yaml` — OpenAPI (Swagger 2.0) spec for the Workflow Studio
+  user API; the source of truth for request/response shapes and for regenerating
   `internal/workflow_client`.
 - `swagger/swagger.yaml` — OpenAPI spec for the upstream Repo API; the source
   of truth for request/response shapes when extending `internal/repoapi`.
@@ -161,9 +159,9 @@ Studio).
   If it hits a Repo-product API, call `ctx.requireAPIKey()`. If it hits a
   Workflow Studio API, call `ctx.ensureWorkflowAuth(cmd.Context())` — both
   validate that `EDS_API_KEY` is set.
-- Every subcommand that returns structured data should support both table
-  (default on TTY) and `--json` output via `ctx.Printer`, not ad-hoc
-  `fmt.Println`.
+- Repo subcommands that return structured data support both table (default
+  on TTY) and `--json` output via `ctx.Printer`. Workflow Studio subcommands
+  currently output JSON only.
 - `eds repo` commands (and `eds wf app create --repository`) accept either a
   repository UUID or a name (`resolveRepoID` / `looksLikeUUID`); don't
   require callers to look up IDs first.

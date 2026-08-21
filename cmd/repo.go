@@ -71,7 +71,7 @@ func newRepoListCmd() *cobra.Command {
 				return fmt.Errorf("api list repositories: %w", err)
 			}
 
-			if ctx.Printer.Format == 1 /* FormatJSON */ {
+			if ctx.Printer.Format == output.FormatJSON {
 				return ctx.Printer.PrintJSON(resp)
 			}
 
@@ -173,7 +173,7 @@ func newRepoShowCmd() *cobra.Command {
 				return fmt.Errorf("api get repository: %w", err)
 			}
 
-			if ctx.Printer.Format == 1 /* FormatJSON */ {
+			if ctx.Printer.Format == output.FormatJSON {
 				return ctx.Printer.PrintJSON(info)
 			}
 			ctx.Printer.KeyValue([][2]string{
