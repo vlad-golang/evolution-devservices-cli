@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git fetch *)",
+      "Bash(gh pr *)",
+      "Bash(git ls-tree *)",
+      "Read(//tmp/**)",
+      "Bash(git show pr-1-review:cmd/job.go > /tmp/pr1-job.go *)",
+      "Bash(go vet *)",
+      "Bash(echo \"vet exit: $?\")",
+      "Bash(git branch *)"
+    ],
+    "additionalDirectories": [
+      "/tmp"
+    ]
+  }
+}
